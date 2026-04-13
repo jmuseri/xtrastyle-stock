@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XtraStyle — Control de Stock</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #2C3E50; font-size: 14px; }
+
+header {
+  background: #2C3E50;
+  color: white;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+header h1 { font-size: 17px; font-weight: 700; }
+header h1 span { color: #E67E22; }
+header .sub { font-size: 11px; opacity: 0.6; margin-top: 2px; }
+#btn-wa {
+  background: #25d366;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#btn-wa:hover { background: #1da851; }
+
+.progreso { background: #1a252f; padding: 7px 20px 8px; }
+.prog-barra { background: #34495e; border-radius: 3px; height: 5px; }
+.prog-fill { background: #27ae60; height: 5px; border-radius: 3px; transition: width 0.25s; width: 100%; }
+.prog-txt { color: rgba(255,255,255,0.55); font-size: 11px; margin-top: 4px; text-align: right; }
+
+main { max-width: 980px; margin: 0 auto; padding: 16px 14px 80px; }
+
+.aviso {
+  background: #fff8e1;
+  border-left: 4px solid #E67E22;
+  padding: 10px 14px;
+  border-radius: 0 7px 7px 0;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: #7d5200;
+  line-height: 1.5;
+}
+
+.cat-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #E67E22;
+  margin: 20px 0 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #E67E22;
+}
+
+/* Tabla grilla por producto */
+.prod-bloque {
+  background: white;
+  border-radius: 9px;
+  border: 1.5px solid #e0e4ea;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.prod-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid #f0f2f5;
+}
+.prod-head:hover { background: #fafbfc; }
+.prod-nombre { font-size: 13px; font-weight: 600; }
+.prod-codigo { font-size: 11px; color: #999; font-family: monospace; margin-top: 1px; }
+.prod-meta { display: flex; align-items: center; gap: 8px; }
+.badge {
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px;
+  white-space: nowrap;
+}
+.badge-ok   { background: #d4edda; color: #155724; }
+.badge-par  { background: #fff3cd; color: #856404; }
+.badge-no   { background: #f8d7da; color: #721c24; }
+.chevron { font-size: 13px; color: #bbb; transition: transform 0.2s; margin-left: 4px; }
+.prod-bloque.open .chevron { transform: rotate(180deg); }
+
+.prod-body { display: none; overflow-x: auto; padding: 0 0 6px; }
+.prod-bloque.open .prod-body { display: block; }
+
+/* La grilla */
+table.grilla {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 12px;
+}
+table.grilla th {
+  background: #f4f6f9;
+  color: #555;
+  font-weight: 600;
+  text-align: center;
+  padding: 6px 10px;
+  border: 1px solid #e8eaed;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+table.grilla th.col-color {
+  text-align: left;
+  min-width: 140px;
+  background: #eceff3;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+table.grilla td {
+  border: 1px solid #e8eaed;
+  text-align: center;
+  padding: 4px 6px;
+  vertical-align: middle;
+}
+table.grilla td.td-color {
+  text-align: left;
+  padding: 6px 12px;
+  font-weight: 500;
+  background: #fafbfc;
+  color: #444;
+  font-size: 12px;
+  white-space: nowrap;
+}
+table.grilla tr:hover td { background: #f8fbff; }
+table.grilla tr:hover td.td-color { background: #f0f4fa; }
+
+/* Checkbox custom */
+.check-cell { cursor: pointer; }
+.check-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 5px;
+  border: 2px solid #ccc;
+  background: #f8d7da;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-size: 14px;
+  user-select: none;
+}
+.check-box.on {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+}
+.check-box.off {
+  background: #f8d7da;
+  border-color: #dc3545;
+  color: #721c24;
+}
+
+/* Fila de acciones rapidas */
+.fila-acciones td {
+  background: #fafbfc;
+  padding: 5px 8px;
+  border: 1px solid #e8eaed;
+}
+.btn-fila {
+  font-size: 10px; padding: 3px 8px;
+  border-radius: 5px; border: 1px solid #dde;
+  background: white; cursor: pointer; color: #555;
+}
+.btn-fila:hover { background: #f0f2f5; }
+
+/* Footer sticky */
+.footer-bar {
+  background: white;
+  border-top: 2px solid #e0e4ea;
+  padding: 12px 20px;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -3px 12px rgba(0,0,0,0.08);
+  z-index: 50;
+}
+.footer-txt { font-size: 12px; color: #666; }
+.footer-txt strong { color: #2C3E50; }
+.btn-footer-wa {
+  background: #25d366; color: white;
+  border: none; padding: 10px 18px;
+  border-radius: 8px; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+}
+.btn-footer-wa:hover { background: #1da851; }
+
+/* Modal */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55); z-index: 200;
+  align-items: flex-end; justify-content: center;
+  padding: 0;
+}
+.overlay.vis { display: flex; }
+.modal {
+  background: white;
+  border-radius: 16px 16px 0 0;
+  padding: 22px 20px 30px;
+  width: 100%; max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal h2 { font-size: 16px; margin-bottom: 4px; }
+.modal p { font-size: 12px; color: #888; margin-bottom: 12px; }
+#wa-txt {
+  background: #f4f6f9;
+  border: 1px solid #dde1e7;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 11px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 280px;
+  overflow-y: auto;
+  font-family: monospace;
+}
+.modal-btns { display: flex; gap: 8px; margin-top: 14px; }
+.btn-m-wa { background: #25d366; color: white; border: none; padding: 11px 0; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; flex: 1; }
+.btn-m-cp { background: #2C3E50; color: white; border: none; padding: 11px 0; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; flex: 1; }
+.btn-m-cl { background: none; border: 1px solid #dde; padding: 10px 0; border-radius: 8px; font-size: 13px; cursor: pointer; color: #666; width: 100%; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Xtra<span>Style</span> — Stock</h1>
+    <div class="sub">Tildar = HAY stock · Destildar = NO hay</div>
+  </div>
+  <button id="btn-wa" onclick="abrirModal()">Enviar por WA ↗</button>
+</header>
+
+<div class="progreso">
+  <div class="prog-barra"><div class="prog-fill" id="prog-fill"></div></div>
+  <div class="prog-txt" id="prog-txt">Cargando...</div>
+</div>
+
+<main>
+  <div class="aviso">
+    ✅ <strong>Todo arranca tildado.</strong> Destildá en rojo lo que <strong>NO tenés</strong> en este momento. Podés usar los botones de cada fila para marcar/desmarcar rápido. Cuando termines, tocá <strong>"Enviar por WA"</strong>.
+  </div>
+  <div id="catalogo"></div>
+</main>
+
+<div class="footer-bar">
+  <div class="footer-txt" id="footer-txt">—</div>
+  <button class="btn-footer-wa" onclick="abrirModal()">Enviar por WA ↗</button>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2>📱 Mensaje para WhatsApp</h2>
+    <p>Revisá el resumen y envialo o copialo.</p>
+    <div id="wa-txt"></div>
+    <div class="modal-btns">
+      <button class="btn-m-wa" onclick="abrirWA()">Abrir WhatsApp</button>
+      <button class="btn-m-cp" onclick="copiar()">Copiar texto</button>
+    </div>
+    <button class="btn-m-cl" onclick="cerrarModal()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+const PROVEEDOR_WA = '5491167905000'; // ← Cambiá por el número del socio
+
+const productos = [
+  // REMERAS
+  { nombre: "Remera Lisa Básica de Algodón", codigo: "420", categoria: "Remeras",
+    colores: ["Beige","Blanco","Celeste","Marino","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74","76"] },
+  { nombre: "Remera Lisa Clásica Algodón Peinado Premium", codigo: "410", categoria: "Remeras",
+    colores: ["Azulino","Gris","Marino","Negro","Rosa"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74","76"] },
+
+  // SWEATERS Y BUZOS
+  { nombre: "Buzo Liso de Friza Invisible", codigo: "583", categoria: "Sweaters y Buzos",
+    colores: ["Azul Petróleo","Francia","Marino"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74","76"] },
+  { nombre: "Sweater Manhattan Cuello en V", codigo: "191", categoria: "Sweaters y Buzos",
+    colores: ["Azul","Gris","Negro"],
+    talles: ["1","2","3","4"] },
+  { nombre: "Sweater Manhattan con Cierre", codigo: "196", categoria: "Sweaters y Buzos",
+    colores: ["Gris","Marino","Marrón","Negro"],
+    talles: ["1","2","3","4"] },
+  { nombre: "Sweater de Algodón Liso Cuello Redondo", codigo: "192", categoria: "Sweaters y Buzos",
+    colores: ["Azul","Gris","Negro"],
+    talles: ["1","2","3","4"] },
+
+  // JEANS
+  { nombre: "Jean Elastizado Azul Lavado Localizado", codigo: "XTS-JEAN-AZ", categoria: "Jeans",
+    colores: ["—"],
+    talles: ["42 (58/60)","44 (62/64)","46 (66)","48 (68)","50 (70)"] },
+  { nombre: "Jean Elastizado Tono Celeste", codigo: "—", categoria: "Jeans",
+    colores: ["—"],
+    talles: ["42 (58/60)","44 (62/64)","46 (66)","48 (68)","50 (70)"] },
+  { nombre: "Jean Negro Elastizado Premium", codigo: "—", categoria: "Jeans",
+    colores: ["—"],
+    talles: ["42 (58/60)","44 (62/64)","46 (66)","48 (68)","50 (70)"] },
+  { nombre: "Jean Recto Rígido 100% Algodón Azul Clásico", codigo: "XTS-642", categoria: "Jeans",
+    colores: ["—"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74","76","78","80"] },
+
+  // PANTALONES Y JOGGINGS
+  { nombre: "Pantalón Jogging Frisado", codigo: "512", categoria: "Pantalones y Joggings",
+    colores: ["Azul Marino","Gris","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72"] },
+  { nombre: "Pantalón Jogging Rústico", codigo: "462", categoria: "Pantalones y Joggings",
+    colores: ["Azul Marino","Gris","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72"] },
+  { nombre: "Pantalón Jogging Frisado Babucha c/ Cierres", codigo: "464", categoria: "Pantalones y Joggings",
+    colores: ["Gris","Marino","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72"] },
+  { nombre: "Pantalón Jogging Rústico Babucha c/ Cierres", codigo: "465", categoria: "Pantalones y Joggings",
+    colores: ["Gris","Marino","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72"] },
+  { nombre: "Pantalón de Gabardina Corte Chino", codigo: "674", categoria: "Pantalones y Joggings",
+    colores: ["Marino","Negro","Verde"],
+    talles: ["54","56","58","60","62","64","66","68","70"] },
+
+  // CAMPERAS Y CHALECOS
+  { nombre: "Campera de Jean Elastizada con Botones Metálicos", codigo: "610", categoria: "Camperas y Chalecos",
+    colores: ["—"],
+    talles: ["54","56","58","60","62","64","66","68","70","72"] },
+  { nombre: "Campera Aviadora Bomber", codigo: "1142", categoria: "Camperas y Chalecos",
+    colores: ["Marino","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74"] },
+  { nombre: "Campera Rústica Algodón Combinada", codigo: "687", categoria: "Camperas y Chalecos",
+    colores: ["Bordeaux c/ Marino","Mostaza c/ Marino","Negro c/ Turquesa","Verde c/ Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74","76"] },
+  { nombre: "Chaleco Inflado con Capucha Desmontable", codigo: "1050", categoria: "Camperas y Chalecos",
+    colores: ["Azul","Gris","Negro"],
+    talles: ["54","56","58","60","62","64","66","68","70","72","74","76","78"] },
+
+  // ROPA INTERIOR
+  { nombre: "Boxer Algodón y Lycra (pack surtido)", codigo: "2007", categoria: "Ropa Interior",
+    colores: ["Surtido"],
+    talles: ["6","8","10","12","14","16"] },
+  { nombre: "Boxer Clásico de Algodón (pack surtido)", codigo: "2006", categoria: "Ropa Interior",
+    colores: ["Surtido"],
+    talles: ["6","8","10","12","14","16"] },
+  { nombre: "Slip Clásico de Algodón (pack surtido)", codigo: "2004", categoria: "Ropa Interior",
+    colores: ["Surtido"],
+    talles: ["6","8","10","12","14","16"] },
+
+  // ACCESORIOS
+  { nombre: "Cinturón Soga Táctico con Hebilla Metálica", codigo: "101", categoria: "Accesorios",
+    colores: ["Azul","Mostaza","Negro","Verde"],
+    talles: ["120","140","160","180"] },
+  { nombre: "Cinturón de Cuero Vacuno", codigo: "102", categoria: "Accesorios",
+    colores: ["Marrón","Negro","Suela"],
+    talles: ["120","130","140","150","160","170"] },
+];
+
+// Estado: true = hay stock, false = no hay
+// Inicializar todo en true
+const estado = {};
+function keyOf(pi, color, talle) { return `${pi}|${color}|${talle}`; }
+
+productos.forEach((p, pi) => {
+  p.colores.forEach(c => {
+    p.talles.forEach(t => {
+      estado[keyOf(pi, c, t)] = true;
+    });
+  });
+});
+
+function toggleCell(pi, color, talle, el) {
+  const k = keyOf(pi, color, talle);
+  estado[k] = !estado[k];
+  el.classList.toggle('on', estado[k]);
+  el.classList.toggle('off', !estado[k]);
+  el.textContent = estado[k] ? '✓' : '✗';
+  actualizarBadge(pi);
+  actualizarProgreso();
+}
+
+function toggleFila(pi, color, val) {
+  productos[pi].talles.forEach(t => {
+    const k = keyOf(pi, color, t);
+    estado[k] = val;
+    const el = document.getElementById(`c_${pi}_${CSS.escape(color)}_${CSS.escape(t)}`);
+    if (el) {
+      el.classList.toggle('on', val);
+      el.classList.toggle('off', !val);
+      el.textContent = val ? '✓' : '✗';
+    }
+  });
+  actualizarBadge(pi);
+  actualizarProgreso();
+}
+
+function toggleColumna(pi, talle, val) {
+  productos[pi].colores.forEach(c => {
+    const k = keyOf(pi, c, talle);
+    estado[k] = val;
+    const el = document.getElementById(`c_${pi}_${CSS.escape(c)}_${CSS.escape(talle)}`);
+    if (el) {
+      el.classList.toggle('on', val);
+      el.classList.toggle('off', !val);
+      el.textContent = val ? '✓' : '✗';
+    }
+  });
+  actualizarBadge(pi);
+  actualizarProgreso();
+}
+
+function actualizarBadge(pi) {
+  const p = productos[pi];
+  let total = 0, conStock = 0;
+  p.colores.forEach(c => p.talles.forEach(t => {
+    total++;
+    if (estado[keyOf(pi, c, t)]) conStock++;
+  }));
+  const badge = document.getElementById(`badge_${pi}`);
+  if (!badge) return;
+  if (conStock === 0) {
+    badge.className = 'badge badge-no';
+    badge.textContent = 'Sin stock';
+  } else if (conStock === total) {
+    badge.className = 'badge badge-ok';
+    badge.textContent = 'Stock completo';
+  } else {
+    badge.className = 'badge badge-par';
+    badge.textContent = `${conStock}/${total}`;
+  }
+}
+
+function actualizarProgreso() {
+  const all = Object.values(estado);
+  const con = all.filter(Boolean).length;
+  const tot = all.length;
+  const pct = Math.round(con / tot * 100);
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-txt').textContent = `${con} de ${tot} variantes con stock`;
+  const sin = tot - con;
+  document.getElementById('footer-txt').innerHTML =
+    `<strong>${con}</strong> con stock · <strong style="color:#dc3545">${sin}</strong> sin stock`;
+}
+
+function toggleCard(pi) {
+  document.getElementById(`prod_${pi}`).classList.toggle('open');
+}
+
+function cssId(pi, color, talle) {
+  return `c_${pi}_${color.replace(/[^a-zA-Z0-9]/g,'_')}_${talle.replace(/[^a-zA-Z0-9]/g,'_')}`;
+}
+
+function renderCatalogo() {
+  const cats = [...new Set(productos.map(p => p.categoria))];
+  let html = '';
+
+  for (const cat of cats) {
+    html += `<div class="cat-titulo">${cat}</div>`;
+    const prods = productos.map((p,i) => ({...p, idx:i})).filter(p => p.categoria === cat);
+
+    for (const p of prods) {
+      const pi = p.idx;
+      const tieneSoloUnColor = p.colores.length === 1 && p.colores[0] === '—';
+
+      // Header de tabla
+      let thead = '<thead><tr>';
+      thead += `<th class="col-color">${tieneSoloUnColor ? 'Talle' : 'Color / Talle'}</th>`;
+      if (!tieneSoloUnColor) {
+        p.talles.forEach(t => {
+          thead += `<th>${t}<br><div style="display:flex;gap:2px;justify-content:center;margin-top:3px">
+            <button class="btn-fila" onclick="event.stopPropagation();toggleColumna(${pi},'${t}',true)" title="Todo con stock esta columna">✓</button>
+            <button class="btn-fila" onclick="event.stopPropagation();toggleColumna(${pi},'${t}',false)" title="Todo sin stock esta columna">✗</button>
+          </div></th>`;
+        });
+      } else {
+        p.talles.forEach(t => {
+          thead += `<th>${t}</th>`;
+        });
+      }
+      thead += '</tr></thead>';
+
+      // Filas
+      let tbody = '<tbody>';
+      p.colores.forEach(color => {
+        tbody += '<tr>';
+        const labelColor = tieneSoloUnColor ? 'Talle' : color;
+        if (!tieneSoloUnColor) {
+          tbody += `<td class="td-color">
+            <span>${color}</span>
+            <div style="display:inline-flex;gap:3px;float:right;margin-left:6px">
+              <button class="btn-fila" onclick="event.stopPropagation();toggleFila(${pi},'${color}',true)" title="Toda la fila con stock">✓</button>
+              <button class="btn-fila" onclick="event.stopPropagation();toggleFila(${pi},'${color}',false)" title="Toda la fila sin stock">✗</button>
+            </div>
+          </td>`;
+        } else {
+          tbody += `<td class="td-color">Talle</td>`;
+        }
+        p.talles.forEach(t => {
+          const id = cssId(pi, color, t);
+          tbody += `<td class="check-cell" onclick="event.stopPropagation();toggleCell(${pi},'${color}','${t}',document.getElementById('${id}'))">
+            <span class="check-box on" id="${id}">✓</span>
+          </td>`;
+        });
+        tbody += '</tr>';
+      });
+      tbody += '</tbody>';
+
+      const totalVar = p.colores.length * p.talles.length;
+      html += `
+        <div class="prod-bloque open" id="prod_${pi}">
+          <div class="prod-head" onclick="toggleCard(${pi})">
+            <div>
+              <div class="prod-nombre">${p.nombre}</div>
+              <div class="prod-codigo">Cód: ${p.codigo} · ${totalVar} variante${totalVar!==1?'s':''}</div>
+            </div>
+            <div class="prod-meta">
+              <span class="badge badge-ok" id="badge_${pi}">Stock completo</span>
+              <span class="chevron">▾</span>
+            </div>
+          </div>
+          <div class="prod-body">
+            <table class="grilla">${thead}${tbody}</table>
+          </div>
+        </div>`;
+    }
+  }
+  document.getElementById('catalogo').innerHTML = html;
+  actualizarProgreso();
+}
+
+function generarMensaje() {
+  const fecha = new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'});
+  let msg = `📦 *XtraStyle — Estado de Stock*\n📅 ${fecha}\n\n`;
+  msg += `Hola! Te mando el estado actualizado del stock:\n\n`;
+
+  const cats = [...new Set(productos.map(p => p.categoria))];
+  for (const cat of cats) {
+    const prods = productos.map((p,i) => ({...p,idx:i})).filter(p => p.categoria === cat);
+    let bloque = '';
+    for (const p of prods) {
+      const pi = p.idx;
+      let sinStock = [];
+      p.colores.forEach(c => p.talles.forEach(t => {
+        if (!estado[keyOf(pi,c,t)]) {
+          sinStock.push(c === '—' ? t : `${c} T${t}`);
+        }
+      }));
+      const total = p.colores.length * p.talles.length;
+      if (sinStock.length === 0) {
+        bloque += `✅ *${p.nombre}* (${p.codigo})\n`;
+      } else if (sinStock.length === total) {
+        bloque += `❌ *${p.nombre}* (${p.codigo}) — SIN STOCK\n`;
+      } else {
+        bloque += `⚠️ *${p.nombre}* (${p.codigo})\n`;
+        bloque += `   Sin stock: ${sinStock.join(' · ')}\n`;
+      }
+    }
+    if (bloque) msg += `*— ${cat} —*\n${bloque}\n`;
+  }
+  msg += `_Gracias!_ 🙌`;
+  return msg;
+}
+
+function abrirModal() {
+  document.getElementById('wa-txt').textContent = generarMensaje();
+  document.getElementById('overlay').classList.add('vis');
+}
+function cerrarModal() { document.getElementById('overlay').classList.remove('vis'); }
+function abrirWA() {
+  window.open(`https://wa.me/${PROVEEDOR_WA}?text=${encodeURIComponent(generarMensaje())}`, '_blank');
+}
+function copiar() {
+  navigator.clipboard.writeText(generarMensaje()).then(() => {
+    const b = document.querySelector('.btn-m-cp');
+    b.textContent = '¡Copiado!';
+    setTimeout(() => b.textContent = 'Copiar texto', 2000);
+  });
+}
+
+document.getElementById('overlay').addEventListener('click', e => { if (e.target === document.getElementById('overlay')) cerrarModal(); });
+
+renderCatalogo();
+</script>
+</body>
+</html>
